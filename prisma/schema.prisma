@@ -1,0 +1,152 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model attendancearrival {
+  arrival_id    String   @id @default(uuid())
+  user_id       String
+  tanggal       DateTime
+  jam_masuk     DateTime
+  latitude      Float
+  longitude     Float
+  face_verified Boolean
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          user     @relation(fields: [user_id], references: [user_id], map: "AttendanceArrival_user_id_fkey")
+
+  @@index([user_id], map: "AttendanceArrival_user_id_fkey")
+}
+
+model attendancedeparture {
+  departure_id  String   @id @default(uuid())
+  user_id       String
+  tanggal       DateTime
+  jam_keluar    DateTime
+  latitude      Float
+  longitude     Float
+  face_verified Boolean
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          user     @relation(fields: [user_id], references: [user_id], map: "AttendanceDeparture_user_id_fkey")
+
+  @@index([user_id], map: "AttendanceDeparture_user_id_fkey")
+}
+
+model company {
+  company_id String   @id @default(uuid())
+  nama       String
+  alamat     String
+  telepon    String
+  email      String
+  logo_url   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  location   location[]
+}
+
+model leaverequest {
+  leave_id        String                  @id @default(uuid())
+  user_id         String
+  jenis_izin      leaverequest_jenis_izin
+  tipe            String
+  tanggal_mulai   DateTime
+  tanggal_selesai DateTime
+  alasan          String
+  bukti_file      String
+  status          String
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  user            user                    @relation(fields: [user_id], references: [user_id], map: "LeaveRequest_user_id_fkey")
+
+  @@index([user_id], map: "LeaveRequest_user_id_fkey")
+}
+
+model location {
+  location_id String   @id @default(uuid())
+  company_id  String
+  nama_lokasi String
+  latitude    Float
+  longitude   Float
+  radius      Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  company     company  @relation(fields: [company_id], references: [company_id], map: "Location_company_id_fkey")
+
+  @@index([company_id], map: "Location_company_id_fkey")
+}
+
+model user {
+  user_id             String                @id @default(uuid())
+  nama                String
+  email               String                @unique(map: "User_email_key")
+  password            String
+  role                user_role
+  status              String
+  no_hp               String?
+  nip                 String?
+  foto_profil         String?               @db.LongText
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  resetToken          String?
+  resetTokenExpiry    DateTime?
+  attendancearrival   attendancearrival[]
+  attendancedeparture attendancedeparture[]
+  leaverequest        leaverequest[]
+  userface            userface[]
+  workagenda          workagenda[]
+}
+
+model userface {
+  face_id       String   @id @default(uuid())
+  user_id       String
+  face_encoding String   @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          user     @relation(fields: [user_id], references: [user_id], map: "UserFace_user_id_fkey")
+
+  @@index([user_id], map: "UserFace_user_id_fkey")
+}
+
+model workagenda {
+  agenda_id      String           @id @default(uuid())
+  user_id        String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  user           user             @relation(fields: [user_id], references: [user_id], map: "WorkAgenda_user_id_fkey")
+  workagendaitem workagendaitem[]
+
+  @@index([user_id], map: "WorkAgenda_user_id_fkey")
+}
+
+model workagendaitem {
+  item_id             String     @id @default(uuid())
+  agenda_id           String
+  tanggal             DateTime
+  jam_mulai           DateTime
+  jam_selesai         DateTime
+  deskripsi_pekerjaan String
+  bukti_foto_url      String
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  workagenda          workagenda @relation(fields: [agenda_id], references: [agenda_id], map: "WorkAgendaItem_agenda_id_fkey")
+
+  @@index([agenda_id], map: "WorkAgendaItem_agenda_id_fkey")
+}
+
+enum leaverequest_jenis_izin {
+  izin
+  cuti
+  sakit
+}
+
+enum user_role {
+  HR
+  ADMIN
+  KARYAWAN
+}

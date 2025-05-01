@@ -1,0 +1,11 @@
+# version: "3.9"
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    environment:
+      DATABASE_URL: mysql://root:@host.docker.internal:3306/absensi_db
+    command: sh -c "npx prisma generate && npx prisma db push && npm run dev"

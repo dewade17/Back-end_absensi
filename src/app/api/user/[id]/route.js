@@ -33,8 +33,8 @@ export async function GET(req) {
     return NextResponse.json({ message: 'Gagal memverifikasi token', error: err.message }, { status: 500 });
   }
 
-  if (!decoded || !decoded.user_id || decoded.role !== 'KARYAWAN') {
-    return NextResponse.json({ message: 'Token tidak sah atau akses ditolak' }, { status: 403 });
+  if (!decoded || !decoded.user_id) {
+    return NextResponse.json({ message: 'Token tidak sah' }, { status: 403 });
   }
 
   if (decoded.user_id !== userId) {

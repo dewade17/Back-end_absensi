@@ -11,8 +11,8 @@ datasource db {
 model attendancearrival {
   arrival_id    String   @id @default(uuid())
   user_id       String
-  tanggal       DateTime
-  jam_masuk     DateTime
+  tanggal      DateTime 
+  jam_masuk    DateTime 
   latitude      Float
   longitude     Float
   face_verified Boolean
@@ -26,8 +26,8 @@ model attendancearrival {
 model attendancedeparture {
   departure_id  String   @id @default(uuid())
   user_id       String
-  tanggal       DateTime
-  jam_keluar    DateTime
+  tanggal      DateTime 
+  jam_masuk    DateTime 
   latitude      Float
   longitude     Float
   face_verified Boolean
@@ -54,12 +54,11 @@ model leaverequest {
   leave_id        String                  @id @default(uuid())
   user_id         String
   jenis_izin      leaverequest_jenis_izin
-  tipe            String
-  tanggal_mulai   DateTime
+  tanggal_mulai   DateTime 
   tanggal_selesai DateTime
   alasan          String
-  bukti_file      String
-  status          String
+  bukti_file      String                  @db.LongText
+  status          String                  @default("PENDING")
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
   user            user                    @relation(fields: [user_id], references: [user_id], map: "LeaveRequest_user_id_fkey")
@@ -100,6 +99,8 @@ model user {
   leaverequest        leaverequest[]
   userface            userface[]
   workagenda          workagenda[]
+  facereenrollmentrequest facereenrollmentrequest[]
+  emergencyattendance     emergencyattendance[]
 }
 
 model userface {
@@ -131,12 +132,45 @@ model workagendaitem {
   jam_mulai           DateTime
   jam_selesai         DateTime
   deskripsi_pekerjaan String
-  bukti_foto_url      String
+  bukti_foto_url      String     @db.LongText
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   workagenda          workagenda @relation(fields: [agenda_id], references: [agenda_id], map: "WorkAgendaItem_agenda_id_fkey")
 
   @@index([agenda_id], map: "WorkAgendaItem_agenda_id_fkey")
+}
+
+model facereenrollmentrequest {
+  request_id String   @id @default(uuid())
+  user_id    String
+  alasan     String
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  catatan    String?  // opsional untuk catatan dari admin saat ditolak/disetujui
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       user     @relation(fields: [user_id], references: [user_id], map: "FaceReEnrollmentRequest_user_id_fkey")
+
+  @@index([user_id], map: "FaceReEnrollmentRequest_user_id_fkey")
+}
+
+model emergencyattendance {
+  emergency_id String   @id @default(uuid())
+  user_id      String
+  tanggal      DateTime
+  jam_masuk    DateTime
+  jenis emergencyattendance_jenis
+  alasan       String   // contoh: "wajah tidak dikenali", "kamera rusak"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         user     @relation(fields: [user_id], references: [user_id], map: "EmergencyAttendance_user_id_fkey")
+
+  @@index([user_id], map: "EmergencyAttendance_user_id_fkey")
+}
+
+
+enum emergencyattendance_jenis {
+  MASUK
+  PULANG
 }
 
 enum leaverequest_jenis_izin {

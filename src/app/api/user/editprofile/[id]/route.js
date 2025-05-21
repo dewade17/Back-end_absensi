@@ -25,16 +25,14 @@ export async function PUT(req) {
     if (err instanceof jwt.TokenExpiredError) {
       return NextResponse.json({ message: 'Token sudah kedaluwarsa' }, { status: 401 });
     }
-
     if (err instanceof jwt.JsonWebTokenError) {
       return NextResponse.json({ message: 'Token tidak valid' }, { status: 401 });
     }
-
     return NextResponse.json({ message: 'Gagal memverifikasi token', error: err.message }, { status: 500 });
   }
 
-  if (!decoded || !decoded.user_id || decoded.role !== 'KARYAWAN') {
-    return NextResponse.json({ message: 'Token tidak sah atau akses ditolak' }, { status: 403 });
+  if (!decoded || !decoded.user_id) {
+    return NextResponse.json({ message: 'Token tidak sah' }, { status: 403 });
   }
 
   if (decoded.user_id !== userId) {
@@ -54,7 +52,7 @@ export async function PUT(req) {
       return NextResponse.json({ message: 'Format email tidak valid' }, { status: 400 });
     }
 
-    const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+    const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
 
     if (foto_profil) {
       if (!foto_profil.startsWith('data:image/')) {

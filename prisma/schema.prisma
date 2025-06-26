@@ -27,7 +27,7 @@ model attendancedeparture {
   departure_id  String   @id @default(uuid())
   user_id       String
   tanggal      DateTime 
-  jam_masuk    DateTime 
+  jam_keluar    DateTime 
   latitude      Float
   longitude     Float
   face_verified Boolean

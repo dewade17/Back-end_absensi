@@ -3,69 +3,104 @@ import { NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import prisma from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
+import jwt from 'jsonwebtoken';
 
-export async function POST(request) {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const pythonScriptPath = path.join(__dirname, '../../python_scripts/verify_face.py');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const pythonScriptPath = path.join(__dirname, '../../python_scripts/verify_face.py');
 
-  const data = await request.formData();
-  const image = data.get('image');
-  const db_faces_json = data.get('db_faces');
-
-  if (!image || !db_faces_json) {
-    return NextResponse.json({ status: 'error', message: 'Missing image or db_faces' }, { status: 400 });
+// Validasi token
+async function validateToken(req) {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return { error: 'Token tidak ditemukan', status: 401 };
   }
 
-  const buffer = Buffer.from(await image.arrayBuffer());
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = verifyToken(token);
+    return { decoded };
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      return { error: 'Token sudah kedaluwarsa', status: 401 };
+    }
+    if (err instanceof jwt.JsonWebTokenError) {
+      return { error: 'Token tidak valid', status: 401 };
+    }
+    return { error: 'Gagal memverifikasi token', status: 500 };
+  }
+}
 
-  // 📍 TAMBAHKAN INI DI SINI!!
-  const parsedDbFaces = JSON.parse(db_faces_json).map((face) => ({
-    ...face,
-    face_encoding: JSON.parse(face.face_encoding),
-  }));
+export async function POST(request) {
+  const { decoded, error, status } = await validateToken(request);
+  if (error) {
+    return NextResponse.json({ status: 'error', message: error }, { status });
+  }
 
-  // 🔥 Lalu saat membuat input
-  const input = JSON.stringify({
-    image: Array.from(buffer),
-    db_faces: parsedDbFaces,
-  });
+  try {
+    const data = await request.formData();
+    const image = data.get('image');
 
-  return new Promise((resolve) => {
-    const pythonProcess = spawn('python', [pythonScriptPath]); // <<< pakai absolute path!
+    if (!image) {
+      return NextResponse.json({ status: 'error', message: 'Image tidak ditemukan' }, { status: 400 });
+    }
 
-    let result = '';
-    let error = '';
-
-    pythonProcess.stdout.on('data', (data) => {
-      result += data.toString();
+    // Ambil wajah user dari database
+    const userFaces = await prisma.userface.findMany({
+      where: { user_id: decoded.user_id },
     });
 
-    pythonProcess.stderr.on('data', (data) => {
-      error += data.toString();
-      console.error('stderr:', data.toString());
+    if (!userFaces.length) {
+      return NextResponse.json({ status: 'error', message: 'Wajah belum terdaftar' }, { status: 404 });
+    }
+
+    // Hanya satu wajah user yang boleh dikirim
+    const parsedDbFace = {
+      user_id: userFaces[0].user_id,
+      face_encoding: JSON.parse(userFaces[0].face_encoding),
+    };
+
+    const buffer = Buffer.from(await image.arrayBuffer());
+    const input = JSON.stringify({
+      image: Array.from(buffer),
+      db_face: parsedDbFace,
     });
 
-    pythonProcess.on('close', (code) => {
-      if (error) {
-        resolve(NextResponse.json({ status: 'error', message: 'Python error: ' + error }, { status: 500 }));
-        return;
-      }
+    return await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [pythonScriptPath]);
 
-      if (!result) {
-        resolve(NextResponse.json({ status: 'error', message: 'No output from Python script' }, { status: 500 }));
-        return;
-      }
+      let result = '';
+      let error = '';
 
-      try {
-        resolve(NextResponse.json(JSON.parse(result)));
-      } catch (e) {
-        console.error('JSON parse error:', e);
-        resolve(NextResponse.json({ status: 'error', message: 'Invalid JSON output from Python' }, { status: 500 }));
-      }
+      pythonProcess.stdout.on('data', (data) => {
+        result += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        error += data.toString();
+        console.error('stderr:', data.toString());
+      });
+
+      pythonProcess.on('close', () => {
+        if (error) {
+          return resolve(NextResponse.json({ status: 'error', message: 'Python error: ' + error }, { status: 500 }));
+        }
+
+        try {
+          return resolve(NextResponse.json(JSON.parse(result)));
+        } catch (e) {
+          console.error('JSON parse error:', e);
+          return resolve(NextResponse.json({ status: 'error', message: 'Invalid JSON from Python' }, { status: 500 }));
+        }
+      });
+
+      pythonProcess.stdin.write(input);
+      pythonProcess.stdin.end();
     });
-
-    pythonProcess.stdin.write(input);
-    pythonProcess.stdin.end();
-  });
+  } catch (err) {
+    console.error('❌ Error verifying face:', err);
+    return NextResponse.json({ status: 'error', message: 'Gagal verifikasi wajah', error: err.message }, { status: 500 });
+  }
 }

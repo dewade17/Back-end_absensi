@@ -1,23 +1,33 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-export async function GET(req, { params }) {
-  const { id } = params;
+export async function GET(req) {
+  const { pathname } = new URL(req.url);
+  const userId = pathname.split('/').pop(); // Dapatkan user_id dari URL
+
+  if (!userId) {
+    return NextResponse.json({ message: 'User ID tidak ditemukan di URL' }, { status: 400 });
+  }
 
   try {
-    const face = await prisma.userFace.findUnique({
-      where: { face_id: id },
-      include: { user: true },
+    const face = await prisma.userface.findFirst({
+      where: { user_id: userId }, // karena user_id hanya diindex, bukan unik
     });
 
     if (!face) {
       return NextResponse.json({ message: 'Data wajah tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json({ face }, { status: 200 });
-  } catch (error) {
-    console.error('❌ Error GET wajah:', error);
-    return NextResponse.json({ message: 'Gagal mengambil data wajah', error: error.message }, { status: 500 });
+    return NextResponse.json(
+      {
+        status: 'success',
+        face_encoding: face.face_encoding,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error('❌ GET /api/userface/[id] error:', err);
+    return NextResponse.json({ message: 'Gagal mengambil data wajah', error: err.message }, { status: 500 });
   }
 }
 

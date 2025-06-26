@@ -1,36 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { Button, Col, Form, Image, Input, Layout, Row, message } from 'antd';
 import { useRouter } from 'next/navigation';
+import { AuthContext } from '@/providers/AuthProvider';
 
 const { Content } = Layout;
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { login } = useContext(AuthContext);
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const loginRes = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
 
-      const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        message.success('Login berhasil!');
-        router.push('/dashboard/admin');
-      } else {
-        message.error(data.message || 'Email atau password salah');
+      const loginData = await loginRes.json();
+      if (!loginRes.ok || !loginData.token) {
+        message.error(loginData.message || 'Email atau password salah');
+        setLoading(false);
+        return;
       }
+
+      await login(loginData.token);
+
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user.role !== 'ADMIN') {
+        message.error('Akses hanya untuk admin');
+        setLoading(false);
+        return;
+      }
+
+      message.success('Login berhasil!');
+      router.push('/admin/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       message.error('Terjadi kesalahan saat login');

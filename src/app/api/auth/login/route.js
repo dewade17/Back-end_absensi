@@ -53,7 +53,7 @@ export async function POST(req) {
       {
         message: 'Login berhasil',
         token,
-        user: { user_id, nama, email: safeEmail, createdAt, updatedAt },
+        // user: { user_id, nama, email: safeEmail, createdAt, updatedAt },
       },
       { status: 200 }
     );

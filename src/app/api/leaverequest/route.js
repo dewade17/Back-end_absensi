@@ -100,3 +100,48 @@ export async function POST(req) {
     );
   }
 }
+
+// GET leave request (all atau per user_id)
+export async function GET(req) {
+  const { error, status, decoded } = await validateToken(req);
+  if (error) {
+    return NextResponse.json({ message: error }, { status });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const user_id = searchParams.get('user_id');
+
+    let whereClause = {};
+    if (user_id) {
+      whereClause.user_id = user_id;
+    }
+
+    const leaveRequests = await prisma.leaverequest.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: {
+          select: { user_id: true, nama: true, email: true },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        message: 'Data izin berhasil diambil',
+        data: leaveRequests,
+      },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error('❌ GET /api/leaverequest error:', err);
+    return NextResponse.json(
+      {
+        message: 'Gagal mengambil data izin',
+        error: err.message,
+      },
+      { status: 500 }
+    );
+  }
+}

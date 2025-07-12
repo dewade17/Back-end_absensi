@@ -2,47 +2,48 @@
 
 import React, { useState, useContext } from 'react';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
-import { Button, Col, Form, Image, Input, Layout, Row, message } from 'antd';
-import { useRouter } from 'next/navigation';
+import { Button, Col, Form, Image, Input, Layout, Row, notification } from 'antd';
 import { AuthContext } from '@/providers/AuthProvider';
+import { apiAuth } from '@/utils/apiAuth';
 
 const { Content } = Layout;
 
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const { login } = useContext(AuthContext);
+  const [api, contextHolder] = notification.useNotification();
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const loginRes = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+      const loginData = await apiAuth.post('/api/auth/login', values);
+
+      // ❌ Jika login gagal (tidak ada token)
+      if (!loginData.token) {
+        api.error({
+          message: 'Login Gagal',
+          description: loginData.message || 'Email atau password salah.',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Simpan token dan mulai login
+      await login(loginData.token, loginData.expiresIn || 3600);
+
+      // ✅ Tampilkan notifikasi berhasil
+      api.success({
+        message: 'Login Berhasil',
+        description: 'Selamat datang di dashboard admin.',
       });
 
-      const loginData = await loginRes.json();
-      if (!loginRes.ok || !loginData.token) {
-        message.error(loginData.message || 'Email atau password salah');
-        setLoading(false);
-        return;
-      }
-
-      await login(loginData.token);
-
-      const user = JSON.parse(localStorage.getItem('user'));
-      if (user.role !== 'ADMIN') {
-        message.error('Akses hanya untuk admin');
-        setLoading(false);
-        return;
-      }
-
-      message.success('Login berhasil!');
-      router.push('/admin/dashboard');
+      // ⛔ Redirect sudah dilakukan di AuthProvider → tidak perlu push di sini
     } catch (error) {
       console.error('Login error:', error);
-      message.error('Terjadi kesalahan saat login');
+      api.error({
+        message: 'Terjadi Kesalahan',
+        description: 'Gagal login. Silakan coba beberapa saat lagi.',
+      });
     } finally {
       setLoading(false);
     }
@@ -50,6 +51,7 @@ export default function LoginPage() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {contextHolder}
       <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
         <Row
           gutter={100}
@@ -62,10 +64,11 @@ export default function LoginPage() {
             style={{ textAlign: 'center' }}
           >
             <Image
-              src='/assets/images/logo.png'
+              src='/assets/images/Karakter_login.png'
               alt='Logo'
               preview={false}
-              width={240}
+              width={350}
+              height={350}
             />
           </Col>
           <Col md={8}>

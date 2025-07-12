@@ -2,51 +2,47 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import Link from 'next/link';
-import { Layout, Menu, Drawer, Button, Dropdown, Avatar, Modal, Flex, Image, ConfigProvider } from 'antd'; // HAPUS Footer dari sini!
+import { Layout, Menu, Drawer, Button, Dropdown, Avatar, Modal, Flex, Image, ConfigProvider, Skeleton, notification } from 'antd';
 import { HomeOutlined, UserOutlined, ScheduleOutlined, CalendarOutlined, BankOutlined, EnvironmentOutlined, SettingOutlined, ReloadOutlined, MenuOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useRouter, usePathname } from 'next/navigation';
 import { AuthContext } from '@/providers/AuthProvider';
 
-const { Sider, Content, Footer } = Layout; // Tambahkan Footer dari Layout!
+const { Sider, Content, Footer } = Layout;
 
 function getItem(label, key, icon, children) {
   return { key, icon, children, label };
 }
 
-// Menu untuk dashboard admin
 const items = [
-  getItem(<Link href='/dashboard/admin'>Home</Link>, 'home', <HomeOutlined />),
-  getItem('Manajemen Absensi', 'absensi', <UserOutlined />, [getItem(<Link href='/dashboard/admin/absensi/guru'>Guru</Link>, 'absensi-guru'), getItem(<Link href='/dashboard/admin/absensi/pegawai'>Pegawai</Link>, 'absensi-pegawai')]),
-  getItem(<Link href='/dashboard/admin/verifikasi'>Verifikasi Izin/Sakit/Cuti</Link>, 'verifikasi', <ScheduleOutlined />),
-  getItem(<Link href='/dashboard/admin/agenda-kerja'>Agenda Kerja</Link>, 'agenda-kerja', <CalendarOutlined />),
-  getItem(<Link href='/dashboard/admin/agenda-mengajar'>Agenda Mengajar</Link>, 'agenda-mengajar', <CalendarOutlined />),
-  getItem(<Link href='/dashboard/admin/profile-sekolah'>Profil Sekolah</Link>, 'profil', <BankOutlined />),
-  getItem(<Link href='/dashboard/admin/lokasi'>Manajemen Lokasi</Link>, 'lokasi', <EnvironmentOutlined />),
-  getItem(<Link href='/dashboard/admin/pengguna'>Manajemen Pengguna</Link>, 'pengguna', <SettingOutlined />),
-  getItem(<Link href='/dashboard/admin/reset-face'>Reset Face</Link>, 'reset-face', <ReloadOutlined />),
+  getItem(<Link href='/admin/dashboard'>Home</Link>, 'home', <HomeOutlined />),
+  getItem('Manajemen Absensi', 'absensi', <UserOutlined />, [getItem(<Link href='/admin/absensi-karyawan'>Karyawan</Link>, 'absensi-karyawan')]),
+  getItem(<Link href='/admin/verifikasi-karyawan'>Verifikasi Izin/Sakit/Cuti</Link>, 'verifikasi', <ScheduleOutlined />),
+  getItem(<Link href='/admin/agenda-kerja'>Agenda Kerja</Link>, 'agenda-kerja', <CalendarOutlined />),
+  getItem(<Link href='/admin/manajemen-profil-perusahaan'>Profil perusahaan</Link>, 'profil', <BankOutlined />),
+  getItem(<Link href='/admin/manajemen-lokasi'>Manajemen Lokasi</Link>, 'lokasi', <EnvironmentOutlined />),
+  getItem(<Link href='/admin/manajemen-pengguna'>Manajemen Pengguna</Link>, 'pengguna', <SettingOutlined />),
+  getItem(<Link href='/admin/reset-face'>Reset Face</Link>, 'reset-face', <ReloadOutlined />),
 ];
 
 const menuMap = {
-  '/dashboard/admin': 'home',
-  '/dashboard/admin/absensi/guru': 'absensi-guru',
-  '/dashboard/admin/absensi/pegawai': 'absensi-pegawai',
-  '/dashboard/admin/verifikasi': 'verifikasi',
-  '/dashboard/admin/agenda-kerja': 'agenda-kerja',
-  '/dashboard/admin/agenda-mengajar': 'agenda-mengajar',
-  '/dashboard/admin/profile-sekolah': 'profil',
-  '/dashboard/admin/lokasi': 'lokasi',
-  '/dashboard/admin/pengguna': 'pengguna',
-  '/dashboard/admin/reset-face': 'reset-face',
+  '/admin/dashboard': 'home',
+  '/admin/absensi-karyawan': 'absensi-karyawan',
+  '/admin/verifikasi-karyawan': 'verifikasi',
+  '/admin/agenda-kerja': 'agenda-kerja',
+  '/admin/manajemen-profil-perusahaan': 'profil',
+  '/admin/manajemen-lokasi': 'lokasi',
+  '/admin/manajemen-pengguna': 'pengguna',
+  '/admin/reset-face': 'reset-face',
 };
 
 const AdminDashboardLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
   const { userProfile, isLoggedIn, isLoading, logout } = useContext(AuthContext);
   const router = useRouter();
   const pathname = usePathname();
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -55,53 +51,42 @@ const AdminDashboardLayout = ({ children }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Autologout jika bukan ADMIN
   useEffect(() => {
     if (!isLoading && (!isLoggedIn || userProfile?.role !== 'ADMIN')) {
       router.push('/login');
     }
   }, [isLoading, isLoggedIn, userProfile, router]);
 
-  // Pastikan sidebar tertutup ketika resize ke desktop
   useEffect(() => {
     if (!isMobile) setDrawerVisible(false);
   }, [isMobile]);
 
-  // Pilih menu aktif
   function getSelectedKeys(pathname) {
-    // direct match
     const found = Object.entries(menuMap).find(([k, v]) => pathname.startsWith(k));
     return found ? [found[1]] : [];
   }
   const selectedKeys = getSelectedKeys(pathname);
 
-  // Logout Modal
   const handleConfirmLogout = () => {
-    Modal.confirm({
-      title: 'Keluar dari akun?',
-      okText: 'Logout',
-      cancelText: 'Batal',
-      onOk: () => {
-        logout && logout();
-        router.push('/login');
-      },
-    });
+    setLogoutModalVisible(true);
   };
 
-  const menu = (
-    <Menu
-      items={[
-        {
-          key: 'logout',
-          label: 'Keluar',
-          icon: <LogoutOutlined />,
-          onClick: handleConfirmLogout,
-        },
-      ]}
-    />
-  );
-
   const primaryColor = '#1677ff';
+
+  if (isLoading) {
+    return (
+      <Layout style={{ minHeight: '100vh' }}>
+        <Content style={{ padding: 40 }}>
+          <Skeleton
+            active
+            avatar
+            paragraph={{ rows: 6 }}
+            title
+          />
+        </Content>
+      </Layout>
+    );
+  }
 
   return (
     <ConfigProvider
@@ -132,7 +117,7 @@ const AdminDashboardLayout = ({ children }) => {
           >
             <div style={{ padding: '16px', textAlign: 'center' }}>
               <Image
-                src='/assets/images/logo_login.png'
+                src='/assets/images/logo_green.png'
                 alt='Logo'
                 width={80}
                 preview={false}
@@ -197,7 +182,16 @@ const AdminDashboardLayout = ({ children }) => {
               style={{ flex: 1 }}
             >
               <Dropdown
-                overlay={menu}
+                menu={{
+                  items: [
+                    {
+                      key: 'logout',
+                      label: 'Keluar',
+                      icon: <LogoutOutlined />,
+                      onClick: handleConfirmLogout,
+                    },
+                  ],
+                }}
                 trigger={['click']}
               >
                 <a
@@ -222,9 +216,29 @@ const AdminDashboardLayout = ({ children }) => {
           {/* CONTENT */}
           <Content style={{ margin: '40px 16px', padding: 24, minHeight: '100vh' }}>{children}</Content>
           {/* FOOTER */}
-          <Footer style={{ textAlign: 'center', boxShadow: '0px -5px 10px rgba(0,0,0,0.07)' }}>Absensi Panel ©{new Date().getFullYear()}</Footer>
+          <Footer style={{ textAlign: 'center', boxShadow: '0px -5px 10px rgba(0,0,0,0.07)' }}>Si Hadir ©{new Date().getFullYear()}</Footer>
         </Layout>
       </Layout>
+      <Modal
+        title='Keluar dari akun?'
+        open={logoutModalVisible}
+        onOk={() => {
+          logout?.();
+          notification.success({
+            message: 'Logout Berhasil',
+            description: 'Anda telah keluar dari akun.',
+          });
+          router.push('/login');
+          setLogoutModalVisible(false);
+        }}
+        onCancel={() => setLogoutModalVisible(false)}
+        okText='Logout'
+        cancelText='Batal'
+        okType='danger'
+        centered
+      >
+        <p>Anda yakin ingin keluar dari akun?</p>
+      </Modal>
     </ConfigProvider>
   );
 };

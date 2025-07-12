@@ -5,9 +5,8 @@ import jwt from 'jsonwebtoken';
 
 export async function GET() {
   try {
-    const locations = await prisma.location.findMany({
-      include: { company: true },
-    });
+    // HANYA HAPUS "include: { company: true }"
+    const locations = await prisma.location.findMany();
     return NextResponse.json({ locations }, { status: 200 });
   } catch (error) {
     console.error('❌ Error fetch lokasi:', error);
@@ -43,12 +42,18 @@ export async function POST(req) {
     const body = await req.json();
     const { company_id, nama_lokasi, latitude, longitude, radius } = body;
 
-    if (!company_id || !nama_lokasi || !latitude || !longitude || !radius) {
+    if (!nama_lokasi || !latitude || !longitude || !radius) {
       return NextResponse.json({ message: 'Semua field wajib diisi' }, { status: 400 });
     }
 
     const lokasi = await prisma.location.create({
-      data: { company_id, nama_lokasi, latitude: parseFloat(latitude), longitude: parseFloat(longitude), radius: parseFloat(radius) },
+      data: {
+        nama_lokasi,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        radius: parseFloat(radius),
+        // company_id, // tambahkan kalau memang perlu dan field ini ada di schema
+      },
     });
 
     return NextResponse.json({ message: 'Lokasi berhasil ditambahkan', lokasi }, { status: 201 });

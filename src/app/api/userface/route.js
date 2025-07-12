@@ -33,7 +33,11 @@ export async function GET(req) {
 
   try {
     const faces = await prisma.userface.findMany({
-      include: { user: true },
+      include: {
+        user: {
+          select: { nama: true },
+        },
+      },
     });
     return NextResponse.json({ faces }, { status: 200 });
   } catch (error) {

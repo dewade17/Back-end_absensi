@@ -1,6 +1,9 @@
 'use client';
 
 import { createContext, useEffect, useState } from 'react';
+import { jwtStorage } from '@/utils/jwtStorage';
+import { apiAuth } from '@/utils/apiAuth';
+import { useRouter } from 'next/navigation';
 
 export const AuthContext = createContext(null);
 
@@ -8,55 +11,57 @@ export default function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [token, setToken] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // ⏳ loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      setToken(savedToken);
-      fetchUserData(savedToken);
-    } else {
-      setIsLoading(false); // selesai tanpa token
-    }
+    const loadToken = async () => {
+      const savedToken = await jwtStorage.retrieveToken(() => setIsLoading(false));
+      if (savedToken) {
+        setToken(savedToken);
+        await fetchUserData();
+      } else {
+        setIsLoading(false);
+      }
+    };
+    loadToken();
   }, []);
 
-  const fetchUserData = async (token) => {
+  const fetchUserData = async () => {
     try {
-      const res = await fetch('/api/auth/getdataprivate', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const data = await apiAuth.getDataPrivate('/api/auth/getdataprivate');
 
-      const data = await res.json();
+      if (data?.user) {
+        if (data.user.role !== 'ADMIN') {
+          console.warn('❌ Akses ditolak: bukan ADMIN');
+          await logout();
+          router.push('/login');
+          return;
+        }
 
-      if (res.ok && data.user) {
         setUserProfile(data.user);
         setIsLoggedIn(true);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        router.push('/admin/dashboard'); // ✅ Pindahkan redirect ke sini
       } else {
-        setIsLoggedIn(false);
-        setUserProfile(null);
+        await logout();
       }
     } catch (err) {
       console.error('❌ Gagal fetch user:', err);
-      setIsLoggedIn(false);
-      setUserProfile(null);
+      await logout();
     } finally {
-      setIsLoading(false); // selesai fetch
+      setIsLoading(false);
     }
   };
 
-  const login = async (token) => {
+  const login = async (token, expiresIn = 3600) => {
     setToken(token);
-    localStorage.setItem('token', token);
-    setIsLoading(true); // siapkan loading ulang
-    await fetchUserData(token);
+    await jwtStorage.storeToken(token, expiresIn);
+    setIsLoading(true);
+    await fetchUserData(); // ⏳ Redirect akan dilakukan setelah sukses & role valid
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    await jwtStorage.removeToken();
     setToken(null);
     setUserProfile(null);
     setIsLoggedIn(false);

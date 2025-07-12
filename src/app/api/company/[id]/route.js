@@ -3,13 +3,14 @@ import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 
+// GET detail perusahaan by ID (tanpa locations)
 export async function GET(req, { params }) {
   const { id } = params;
 
   try {
     const company = await prisma.company.findUnique({
       where: { company_id: id },
-      include: { locations: true },
+      // tanpa include locations
     });
 
     if (!company) {
@@ -23,6 +24,7 @@ export async function GET(req, { params }) {
   }
 }
 
+// UPDATE perusahaan (by ID, khusus ADMIN)
 export async function PUT(req, { params }) {
   const { id } = params;
 
@@ -57,6 +59,7 @@ export async function PUT(req, { params }) {
   }
 }
 
+// DELETE perusahaan (by ID, khusus ADMIN)
 export async function DELETE(req, { params }) {
   const { id } = params;
 

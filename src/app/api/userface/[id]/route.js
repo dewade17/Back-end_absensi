@@ -50,11 +50,17 @@ export async function PUT(req, { params }) {
   }
 }
 
-export async function DELETE(req, { params }) {
-  const { id } = params;
+export async function DELETE(req, context) {
+  const { params } = context; // ini sesuai Next.js App Router
+  const id = params.id;
+
+  if (!id) {
+    return NextResponse.json({ message: 'ID wajah tidak ditemukan' }, { status: 400 });
+  }
 
   try {
-    await prisma.userFace.delete({
+    await prisma.userface.delete({
+      // harus lowercase!
       where: { face_id: id },
     });
 

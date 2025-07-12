@@ -3,11 +3,12 @@ import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 
+// PUT: Update lokasi
 export async function PUT(req, { params }) {
   const location_id = params.id;
 
   const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer')) {
     return NextResponse.json({ message: 'Token tidak ditemukan' }, { status: 401 });
   }
 
@@ -31,7 +32,16 @@ export async function PUT(req, { params }) {
 
   try {
     const body = await req.json();
-    const { nama_lokasi, latitude, longitude, radius } = body;
+    let { nama_lokasi, latitude, longitude, radius } = body;
+
+    // Pastikan tipe data number
+    latitude = typeof latitude === 'string' ? parseFloat(latitude) : latitude;
+    longitude = typeof longitude === 'string' ? parseFloat(longitude) : longitude;
+    radius = typeof radius === 'string' ? parseFloat(radius) : radius;
+
+    if (isNaN(latitude) || isNaN(longitude) || isNaN(radius)) {
+      return NextResponse.json({ message: 'Latitude, longitude, dan radius harus berupa angka yang valid.' }, { status: 400 });
+    }
 
     const lokasi = await prisma.location.update({
       where: { location_id },
@@ -45,11 +55,12 @@ export async function PUT(req, { params }) {
   }
 }
 
+// DELETE: Hapus lokasi
 export async function DELETE(req, { params }) {
   const location_id = params.id;
 
   const authHeader = req.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
+  if (!authHeader?.startsWith('Bearer')) {
     return NextResponse.json({ message: 'Token tidak ditemukan' }, { status: 401 });
   }
 

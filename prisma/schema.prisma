@@ -44,10 +44,9 @@ model company {
   alamat     String
   telepon    String
   email      String
-  logo_url   String
+  logo_url    String                  @db.LongText
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  location   location[]
 }
 
 model leaverequest {
@@ -68,16 +67,12 @@ model leaverequest {
 
 model location {
   location_id String   @id @default(uuid())
-  company_id  String
   nama_lokasi String
   latitude    Float
   longitude   Float
   radius      Float
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  company     company  @relation(fields: [company_id], references: [company_id], map: "Location_company_id_fkey")
-
-  @@index([company_id], map: "Location_company_id_fkey")
 }
 
 model user {

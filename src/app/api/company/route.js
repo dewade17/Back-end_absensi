@@ -3,11 +3,10 @@ import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 
+// Ambil semua data perusahaan TANPA include lokasi
 export async function GET() {
   try {
-    const companies = await prisma.company.findMany({
-      include: { locations: true },
-    });
+    const companies = await prisma.company.findMany(); // tanpa include locations
     return NextResponse.json({ companies }, { status: 200 });
   } catch (error) {
     console.error('❌ Gagal mengambil data perusahaan:', error);
@@ -15,6 +14,7 @@ export async function GET() {
   }
 }
 
+// Tambahkan perusahaan baru (khusus admin)
 export async function POST(req) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {

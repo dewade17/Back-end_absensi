@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/auth'; // pastikan ada fungsi ini
+import prisma from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
 
 export async function GET(req) {
   // --- Validasi Token ---
@@ -12,14 +12,14 @@ export async function GET(req) {
   const token = authHeader.split(' ')[1];
   let user;
   try {
-    user = verifyToken(token); // pastikan verifyToken return user (atau throw error jika invalid)
+    user = verifyToken(token);
   } catch {
     return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
   }
 
   // --- Filter Query ---
   const { searchParams } = new URL(req.url);
-  const tanggal = searchParams.get('tanggal'); // yyyy-mm-dd (optional)
+  const tanggal = searchParams.get('tanggal');
   let filter = {};
 
   if (tanggal) {
@@ -31,14 +31,21 @@ export async function GET(req) {
   }
 
   try {
-    // Fetch semua data kedatangan & kepulangan
     const arrivals = await prisma.attendancearrival.findMany({
       where: filter,
-      include: { user: true },
+      include: {
+        user: {
+          select: { nama: true },
+        },
+      },
     });
     const departures = await prisma.attendancedeparture.findMany({
       where: filter,
-      include: { user: true },
+      include: {
+        user: {
+          select: { nama: true },
+        },
+      },
     });
 
     return NextResponse.json({ arrivals, departures });

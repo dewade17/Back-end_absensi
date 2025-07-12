@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { verifyToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
 
+// Ambil semua data user dengan role KARYAWAN (akses hanya ADMIN)
 export async function GET(req) {
-  const { pathname } = new URL(req.url);
-  const userId = pathname.split('/').pop();
-
-  if (!userId) {
-    return NextResponse.json({ message: 'ID user tidak valid' }, { status: 400 });
-  }
-
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return NextResponse.json({ message: 'Token tidak ditemukan' }, { status: 401 });
@@ -25,7 +19,6 @@ export async function GET(req) {
     if (err instanceof jwt.TokenExpiredError) {
       return NextResponse.json({ message: 'Token sudah kedaluwarsa' }, { status: 401 });
     }
-
     if (err instanceof jwt.JsonWebTokenError) {
       return NextResponse.json({ message: 'Token tidak valid' }, { status: 401 });
     }
@@ -33,22 +26,20 @@ export async function GET(req) {
     return NextResponse.json({ message: 'Gagal memverifikasi token', error: err.message }, { status: 500 });
   }
 
-  if (!decoded || !decoded.user_id) {
-    return NextResponse.json({ message: 'Token tidak sah' }, { status: 403 });
-  }
-
-  if (decoded.user_id !== userId) {
-    return NextResponse.json({ message: 'Kamu tidak diizinkan melihat data user lain' }, { status: 403 });
+  // ⛔ hanya ADMIN yang boleh akses
+  if (!decoded || decoded.role !== 'ADMIN') {
+    return NextResponse.json({ message: 'Hanya role ADMIN yang dapat mengakses data ini' }, { status: 403 });
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { user_id: userId },
+    const users = await prisma.user.findMany({
+      where: { role: 'KARYAWAN' }, // ✅ hanya user dengan role KARYAWAN
       select: {
         user_id: true,
         nama: true,
         email: true,
         no_hp: true,
+        status: true,
         nip: true,
         foto_profil: true,
         createdAt: true,
@@ -56,13 +47,8 @@ export async function GET(req) {
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ message: 'User tidak ditemukan' }, { status: 404 });
-    }
-
-    return NextResponse.json({ message: 'Data user berhasil diambil', user }, { status: 200 });
+    return NextResponse.json({ message: 'Data KARYAWAN berhasil diambil', users }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: 'Gagal mengambil data user', error: error.message }, { status: 500 });
   }
 }
-
